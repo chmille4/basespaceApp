@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title></title>
+	<script type="text/javascript" src="assets/js/iobio.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+</head>
+<body>
+
+	<script type="text/javascript">
+
+		var urlParams = parseUrlParams();
+
+		var appSessionHref = getAppSessionHref(urlParams),
+			apiUrl = "https://api.basespace.illumina.com/",
+			apiVersion = "v1pre3/",
+			samtools = "nv-dev-new.iobio.io/samtools/",
+			basespace = "0.0.0.0:8065/";
+			// basespace = "nv-dev-new.iobio.io/basespace/";
+
+		getAccessToken(urlParams, function(accessToken) {
+
+			// get app session
+			$.ajax({
+			   url: apiUrl + appSessionHref,
+			   data: {access_token: accessToken},
+			   type: 'GET',
+			   contentType: "application/json",
+			   dataType: 'json',
+			   error: function(error) {
+			      console.error(error);
+			   }
+
+			}).done(function(sessionRes) {
+				var bamHref, baiHref;
+
+				sessionRes.Response.References.forEach(function(ref) {
+					if (ref.Type == 'File' && ref.Rel == 'Input') {
+						if (ref.Content.Name.slice(-3) == 'bam')
+							bamHref = ref.Content.HrefContent;
+						else if (ref.Content.Name.slice(-3) == 'bai')
+							baiHref = ref.Content.HrefContent;
+					}
+				})
+
+				// get bam S3 location
+				$.ajax({
+					url: apiUrl + bamHref,
+					data: {access_token: accessToken, redirect: 'meta'},
+					type: 'GET',
+					contentType: "application/json",
+					dataType: 'json',
+					error: function(error) {
+						console.error(error);
+					}
+				}).done(function(bamRes) {
+
+					var bamUrl = '"' + bamRes.Response.HrefContent + '"' ;
+
+					// get bai s3 location
+					$.ajax({
+						url: apiUrl + baiHref,
+						data: {access_token: accessToken, redirect: 'meta'},
+						type: 'GET',
+						contentType: "application/json",
+						dataType: 'json',
+						error: function(error) {
+							console.error(error);
+						}
+					}).done(function(baiRes) {
+
+						var baiUrl = '"' + baiRes.Response.HrefContent + '"';
+
+						var cmd = new iobio.cmd(samtools, [ '-z', baiUrl, 'view', bamUrl, 'chr1:1000000-1020000']);
+
+						cmd.on('error', function(err) { /*console.error(err);*/ })
+							.on('data', function(d) { console.log(d); })
+							.run();
+					})
+				})
+			})
+		})
+
+		function getAccessToken(urlParams, callback) {
+			// return "04385e507b6e459e87e736024a9d561f";
+			var authorization_code = urlParams.authorization_code;
+			var cmd = new iobio.cmd(basespace, [authorization_code]);
+
+			cmd.on('data', function(d) {
+				var accessToken = JSON.parse(d).access_token
+				callback(accessToken);
+			})
+				.on('error', function(e) { /*console.error(e)*/ ;})
+				.run()
+		}
+
+		function getAppSessionHref(urlParams) {
+			// return "36918820";
+			return urlParams.appsessionuri
+		}
+
+		function parseUrlParams() {
+			var urlParams = {};
+
+		    var match,
+		        pl     = /\+/g,  // Regex for replacing addition symbol with a space
+		        search = /([^&=]+)=?([^&]*)/g,
+		        decode = function (s) { return decodeURIComponent(s.replace(pl, " ")); },
+		        query  = window.location.search.substring(1);
+
+		    urlParams = {};
+		    while (match = search.exec(query))
+		       urlParams[decode(match[1])] = decode(match[2]);
+
+			return urlParams;
+		}
+
+
+	</script>
+
+</body>
+</html>
