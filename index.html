@@ -71,7 +71,7 @@
 
 						var baiUrl = '"' + baiRes.Response.HrefContent + '"';
 
-						var cmd = new iobio.cmd(samtools, [ '-z', baiUrl, 'view', bamUrl, 'chr1:1000000-1020000'], { ssl:true });
+						var cmd = new iobio.cmd(samtools, [ '-z', baiUrl, 'view', bamUrl, 'chr1:1000000-1020000']);
 
 						cmd.on('error', function(err) { /*console.error(err);*/ })
 							.on('data', function(d) { console.log(d); })
@@ -84,7 +84,7 @@
 		function getAccessToken(urlParams, callback) {
 			// return "04385e507b6e459e87e736024a9d561f";
 			var authorization_code = urlParams.authorization_code;
-			var cmd = new iobio.cmd(basespace, [authorization_code], { ssl:true });
+			var cmd = new iobio.cmd(basespace, [authorization_code]);
 
 			cmd.on('data', function(d) {
 				var accessToken = JSON.parse(d).access_token
